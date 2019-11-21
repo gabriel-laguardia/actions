@@ -1,52 +1,31 @@
 name: "push"
-
-on:
-  pull_request:
-  push:
-    branches-ignore:
-      - 'releases/**'
-    tags:
-      - '*'
+on: [push]
 jobs:
-  test:
+  multiple:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - run: npm ci
+    - run: sudo dpkg --add-architecture i386
+    - run: sudo apt-get update -q
 
-    - run: npm test
+  single:
+    runs-on: ubuntu-latest
+    steps:
+    - run: |
+        sudo dpkg --add-architecture i386
+        sudo apt-get update -q
 
-    - name: Test action from sources
-      uses: ./
-      with:
-        milliseconds: 1000
-
-    - run: npm run package
-    - name: Package action.yml and README.md
+  custom:
+    runs-on: ubuntu-latest
+    steps:
+    - shell: bash --noprofile --norc -eo pipefail {0}
       run: |
-        sed 's#dist/index\.js#index\.js#g' action.yml > dist/action.yml
-        cp USAGE.md dist/README.md
+        sudo dpkg --add-architecture i386
+        sudo apt-get update -q
 
-    - name: Test packaged action
-      uses: ./dist
-      with:
-        milliseconds: 1000
-
-    - if: startsWith(github.ref, 'refs/tags')
-      name: Publish release
+  sudo:
+    runs-on: ubuntu-latest
+    steps:
+    - shell: sudo bash --noprofile --norc -eo pipefail {0}
       run: |
-        TAG=`echo "$GITHUB_REF" | sed 's#refs/tags/##g'`
-        BRANCH="release/`echo "$TAG" | cut -d. -f1`"
-
-        git checkout --orphan "$BRANCH"
-        git rm --cached -r .
-        git add dist
-        git clean -fdx
-        git mv dist/* ./
-
-        git config --global user.email "publish@gha"
-        git config --global user.name "GHA"
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY
-
-        git commit -m "publish $TAG [$GITHUB_SHA]"
-        git push origin +"$BRANCH"
+        dpkg --add-architecture i386
+        apt-get update -q
